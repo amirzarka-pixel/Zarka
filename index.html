@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>הקניות שלנו</title>
+<meta name="theme-color" content="#2f6b45">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="הקניות שלנו">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Assistant:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Setup: name + family -->
+  <section id="setupView" hidden>
+    <h1>הקניות שלנו</h1>
+    <p class="lead">רשימת קניות אחת לכל המשפחה, מתעדכנת אצל כולם בזמן אמת.</p>
+    <form id="setupForm" class="card col" autocomplete="off">
+      <label for="setupName">איך קוראים לך?</label>
+      <input type="text" id="setupName" maxlength="20" placeholder="למשל: אבא, נועה" required>
+      <div id="joinBox" class="col" hidden>
+        <p class="hint">מצטרפים לרשימה המשפחתית מהקישור שקיבלת.</p>
+      </div>
+      <button class="btn primary" type="submit" id="setupSubmit">יצירת רשימה משפחתית</button>
+    </form>
+    <p class="hint">יש לך קוד משפחה? <button class="link" type="button" id="haveCode">הצטרפות עם קוד</button></p>
+    <form id="codeForm" class="card col" hidden autocomplete="off">
+      <label for="codeInput">קוד המשפחה</label>
+      <input type="text" id="codeInput" dir="ltr" placeholder="הדביקו כאן את הקוד">
+      <button class="btn ghost" type="submit">הצטרפות</button>
+    </form>
+  </section>
+
+  <!-- Main list -->
+  <section id="mainView" hidden>
+    <header class="top">
+      <div>
+        <h1>הקניות שלנו</h1>
+        <div class="count" id="count">טוען…</div>
+      </div>
+      <button class="iconbtn" id="settingsBtn" type="button" aria-label="הגדרות ושיתוף">⚙</button>
+    </header>
+    <div class="status" id="status"></div>
+
+    <form class="add card" id="addForm" autocomplete="off">
+      <input type="text" id="itemName" list="historyList" placeholder="מה צריך לקנות?" aria-label="שם המוצר" required maxlength="60">
+      <input type="number" id="itemQty" value="1" min="1" max="99" aria-label="כמות" inputmode="numeric">
+      <input type="text" id="itemNote" class="full" placeholder="הערה (לא חובה), למשל: 3% שומן" maxlength="80" aria-label="הערה">
+      <div class="full row">
+        <select id="itemCat" aria-label="מחלקה"></select>
+        <button class="btn primary" type="submit">הוספה</button>
+      </div>
+      <datalist id="historyList"></datalist>
+    </form>
+
+    <div class="staples" id="staplesBox">
+      <div class="staples-head">
+        <span class="label">קבועים ונקנים הרבה</span>
+        <button class="link" type="button" id="addAllStaples" hidden>הוספת כל הקבועים</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div id="lists"></div>
+
+    <section id="cartSec" hidden>
+      <div class="cartbar">
+        <h2 id="cartTitle">בעגלה</h2>
+        <div id="clearArea"><button class="btn ghost small" id="clearBtn" type="button">ניקוי מה שנקנה</button></div>
+      </div>
+      <ul id="cartList" class="items"></ul>
+    </section>
+  </section>
+</div>
+
+<!-- Edit sheet -->
+<div class="sheet-bg" id="editBg" hidden>
+  <form class="sheet" id="editForm" autocomplete="off">
+    <h2>עריכת מוצר</h2>
+    <label for="editName">שם</label>
+    <input type="text" id="editName" maxlength="60" required>
+    <div class="row">
+      <div class="col grow"><label for="editCat">מחלקה</label><select id="editCat"></select></div>
+      <div class="col"><label for="editQty">כמות</label><input type="number" id="editQty" min="1" max="99"></div>
+    </div>
+    <label for="editNote">הערה</label>
+    <input type="text" id="editNote" maxlength="80">
+    <p class="hint" id="editMeta"></p>
+    <div class="row">
+      <button class="btn primary grow" type="submit">שמירה</button>
+      <button class="btn ghost" type="button" id="editCancel">ביטול</button>
+      <button class="btn danger" type="button" id="editDelete">מחיקה</button>
+    </div>
+  </form>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet-bg" id="setBg" hidden>
+  <div class="sheet">
+    <h2>שיתוף והגדרות</h2>
+    <p>כדי שבן משפחה יצטרף, שלחו לו את הקישור. כל מי שיש לו את הקישור יכול לראות ולשנות את הרשימה.</p>
+    <div class="copyrow"><input type="text" id="shareLink" dir="ltr" readonly aria-label="קישור הצטרפות"><button class="btn primary" type="button" id="copyLink">העתקה</button></div>
+    <label for="myName">השם שלי</label>
+    <div class="copyrow"><input type="text" id="myName" maxlength="20"><button class="btn ghost" type="button" id="saveName">שמירה</button></div>
+    <p class="hint" id="setMsg"></p>
+    <div class="row">
+      <button class="btn ghost grow" type="button" id="setClose">סגירה</button>
+      <button class="btn ghost" type="button" id="leaveFamily">יציאה מהרשימה</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

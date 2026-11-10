@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only the app's signed-in users, and only inside a family list whose
+    // code is long enough to be unguessable.
+    match /families/{family}/{document=**} {
+      allow read, write: if request.auth != null && family.size() >= 20;
+    }
+  }
+}
