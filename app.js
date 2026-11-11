@@ -118,21 +118,40 @@ async function addItem(name, qty, cat, note){
   name = name.trim(); note = (note || "").trim();
   if (!name || !itemsCol) return;
   const existing = items.find(i => !i.done && i.name === name);
-  try {
-    if (existing) {
-      const ch = { qty: Math.min(99, (existing.qty || 1) + qty) };
-      if (note && note !== existing.note) ch.note = existing.note ? existing.note + " · " + note : note;
-      await updateDoc(doc(itemsCol, existing.id), ch);
-    } else {
-      await addDoc(itemsCol, { name, qty, cat, note, addedBy: me, createdAt: Date.now(), done: false, doneAt: 0, doneBy: "" });
-    }
-    await setDoc(doc(histCol, histKey(name)), { name, cat, count: increment(1), lastAt: Date.now() }, { merge: true });
-  } catch (e) { onErr(e); }
+  if (existing) {
+    const before = { qty: existing.qty || 1, note: existing.note || "" };
+    const ch = { qty: Math.min(99, before.qty + qty) };
+    if (note && note !== before.note) ch.note = before.note ? before.note + " · " + note : note;
+    const ref = doc(itemsCol, existing.id);
+    fire(updateDoc(ref, ch));
+    showUndo(`עודכנה הכמות: ${name}`, () => updateDoc(ref, before));
+  } else {
+    const ref = doc(itemsCol); // new id, so the add can be undone right away, even offline
+    fire(setDoc(ref, { name, qty, cat, note, addedBy: me, createdAt: Date.now(), done: false, doneAt: 0, doneBy: "" }));
+    showUndo(`נוסף: ${name}`, () => deleteDoc(ref));
+  }
+  fire(setDoc(doc(histCol, histKey(name)), { name, cat, count: increment(1), lastAt: Date.now() }, { merge: true }));
 }
-async function toggle(i){
-  try { await updateDoc(doc(itemsCol, i.id), i.done ? { done:false, doneAt:0, doneBy:"" } : { done:true, doneAt:Date.now(), doneBy:me }); }
-  catch (e) { onErr(e); }
+function toggle(i){
+  const ref = doc(itemsCol, i.id);
+  const before = { done: !!i.done, doneAt: i.doneAt || 0, doneBy: i.doneBy || "" };
+  fire(updateDoc(ref, i.done ? { done:false, doneAt:0, doneBy:"" } : { done:true, doneAt:Date.now(), doneBy:me }));
+  showUndo(i.done ? `הוחזר לרשימה: ${i.name}` : `סומן כנקנה: ${i.name}`, () => updateDoc(ref, before));
 }
+
+// ---------- undo ----------
+// Writes are fired without waiting: offline, Firestore only resolves once the server answers.
+function fire(p){ return Promise.resolve(p).catch(onErr); }
+let undoFn = null, undoTimer = 0;
+function showUndo(text, fn){
+  undoFn = fn;
+  $("toastText").textContent = text;
+  $("toast").hidden = false;
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideUndo, 7000);
+}
+function hideUndo(){ $("toast").hidden = true; undoFn = null; clearTimeout(undoTimer); }
+$("toastUndo").onclick = () => { const fn = undoFn; hideUndo(); if (fn) fire(fn()); };
 async function togglePin(name, cat){
   const h = history.get(histKey(name));
   try { await setDoc(doc(histCol, histKey(name)), { name, cat: h?.cat || cat, pinned: !(h && h.pinned) }, { merge: true }); }
@@ -226,7 +245,6 @@ function openEdit(i){
   $("editName").value = i.name; $("editQty").value = i.qty || 1; $("editCat").value = CATS.includes(i.cat) ? i.cat : "אחר"; $("editNote").value = i.note || "";
   const when = i.createdAt ? new Date(i.createdAt).toLocaleDateString("he-IL", { day:"numeric", month:"numeric" }) : "";
   $("editMeta").textContent = i.addedBy ? `נוסף ע״י ${i.addedBy}${when ? " ב-" + when : ""}` : "";
-  $("editDelete").textContent = "מחיקה";
   $("editBg").hidden = false;
 }
 function closeEdit(){ $("editBg").hidden = true; editing = null; }
@@ -235,14 +253,17 @@ $("editBg").addEventListener("click", e => { if (e.target === $("editBg")) close
 $("editForm").addEventListener("submit", async e => {
   e.preventDefault(); if (!editing) return;
   const ch = { name: $("editName").value.trim() || editing.name, qty: Math.max(1, Math.min(99, parseInt($("editQty").value,10) || 1)), cat: $("editCat").value, note: $("editNote").value.trim() };
-  const id = editing.id; closeEdit();
-  try { await updateDoc(doc(itemsCol, id), ch); await setDoc(doc(histCol, histKey(ch.name)), { name: ch.name, cat: ch.cat }, { merge: true }); } catch (err) { onErr(err); }
+  const before = { name: editing.name, qty: editing.qty || 1, cat: editing.cat || "אחר", note: editing.note || "" };
+  const ref = doc(itemsCol, editing.id); closeEdit();
+  fire(updateDoc(ref, ch));
+  fire(setDoc(doc(histCol, histKey(ch.name)), { name: ch.name, cat: ch.cat }, { merge: true }));
+  showUndo(`נשמרו השינויים: ${ch.name}`, () => updateDoc(ref, before));
 });
-$("editDelete").onclick = async () => {
-  const b = $("editDelete");
-  if (b.textContent !== "בטוח?") { b.textContent = "בטוח?"; return; }
-  const id = editing.id; closeEdit();
-  try { await deleteDoc(doc(itemsCol, id)); } catch (err) { onErr(err); }
+$("editDelete").onclick = () => {
+  const { id, ...data } = editing;
+  const ref = doc(itemsCol, id); closeEdit();
+  fire(deleteDoc(ref));
+  showUndo(`נמחק: ${data.name}`, () => setDoc(ref, data));
 };
 
 // ---------- clear purchased ----------
@@ -254,16 +275,12 @@ clearBtnEl.onclick = () => {
   const y = document.createElement("button"); y.className = "btn danger small"; y.type = "button"; y.textContent = "מחיקה";
   const n = document.createElement("button"); n.className = "btn ghost small"; n.type = "button"; n.textContent = "ביטול";
   const restore = () => { a.textContent = ""; a.appendChild(clearBtnEl); };
-  y.onclick = async () => {
+  y.onclick = () => {
     restore();
-    const done = items.filter(i => i.done);
-    try {
-      for (let k = 0; k < done.length; k += 400) {
-        const batch = writeBatch(fs);
-        done.slice(k, k + 400).forEach(i => batch.delete(doc(itemsCol, i.id)));
-        await batch.commit();
-      }
-    } catch (err) { onErr(err); }
+    const done = items.filter(i => i.done).map(({ id, ...data }) => ({ id, data }));
+    const inBatches = op => { for (let k = 0; k < done.length; k += 400) { const b = writeBatch(fs); done.slice(k, k + 400).forEach(d => op(b, d)); fire(b.commit()); } };
+    inBatches((b, d) => b.delete(doc(itemsCol, d.id)));
+    showUndo(`נמחקו ${done.length} פריטים מהעגלה`, () => inBatches((b, d) => b.set(doc(itemsCol, d.id), d.data)));
   };
   n.onclick = restore;
   w.append(t, y, n); a.appendChild(w);
