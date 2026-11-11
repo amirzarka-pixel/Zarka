@@ -50,6 +50,14 @@
     </header>
     <div class="status" id="status"></div>
 
+    <div class="banner card" id="notifBanner" hidden>
+      <p>רוצים לקבל התראה כשמישהו מוסיף מוצר לרשימה?</p>
+      <div class="row">
+        <button class="btn primary small" type="button" id="bannerOn">הפעלת התראות</button>
+        <button class="btn ghost small" type="button" id="bannerLater">לא עכשיו</button>
+      </div>
+    </div>
+
     <form class="add card" id="addForm" autocomplete="off">
       <input type="text" id="itemName" list="historyList" placeholder="מה צריך לקנות?" aria-label="שם המוצר" required maxlength="60">
       <input type="number" id="itemQty" value="1" min="1" max="99" aria-label="כמות" inputmode="numeric">
@@ -111,6 +119,14 @@
     <label for="myName">השם שלי</label>
     <div class="copyrow"><input type="text" id="myName" maxlength="20"><button class="btn ghost" type="button" id="saveName">שמירה</button></div>
     <p class="hint" id="setMsg"></p>
+    <div class="col notif-box" id="notifBox" hidden>
+      <label>התראות</label>
+      <p class="hint" id="notifText"></p>
+      <div class="row">
+        <button class="btn primary" type="button" id="notifOn" hidden>הפעלת התראות</button>
+        <button class="btn ghost" type="button" id="notifOff" hidden>כיבוי התראות בטלפון הזה</button>
+      </div>
+    </div>
     <div class="row">
       <button class="btn ghost grow" type="button" id="setClose">סגירה</button>
       <button class="btn ghost" type="button" id="leaveFamily">יציאה מהרשימה</button>

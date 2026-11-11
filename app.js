@@ -4,12 +4,13 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, addDoc, updateDoc, deleteDoc, setDoc, onSnapshot, increment, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig } from "./firebase-config.js";
+import { firebaseConfig, vapidKey } from "./firebase-config.js";
+const MESSAGING_URL = "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 // ---------- constants ----------
 const CATS = ["ירקות ופירות","מוצרי חלב וביצים","לחם ומאפים","בשר ודגים","מזווה ושימורים","קפואים","שתייה","חטיפים ומתוקים","ניקיון וטואלטיקה","תינוקות","אחר"];
 const STARTERS = [["חלב","מוצרי חלב וביצים"],["ביצים","מוצרי חלב וביצים"],["לחם","לחם ומאפים"],["עגבניות","ירקות ופירות"],["מלפפונים","ירקות ופירות"],["בננות","ירקות ופירות"],["גבינה לבנה","מוצרי חלב וביצים"],["פסטה","מזווה ושימורים"],["אורז","מזווה ושימורים"],["חזה עוף","בשר ודגים"],["נייר טואלט","ניקיון וטואלטיקה"]];
-const LS_NAME = "kniyot-name", LS_FAMILY = "kniyot-family";
+const LS_NAME = "kniyot-name", LS_FAMILY = "kniyot-family", LS_DEVICE = "kniyot-device", LS_NOTIF_DISMISSED = "kniyot-notif-dismissed";
 
 const $ = id => document.getElementById(id);
 const ls = {
@@ -27,6 +28,10 @@ let family = "";
 let items = [], history = new Map();
 let fs = null, itemsCol = null, histCol = null;
 let editing = null;
+let firebaseApp = null;
+// A stable id for this phone, so notifications skip the person who added the item.
+let deviceId = ls.get(LS_DEVICE);
+if (!deviceId) { deviceId = randomCode(); ls.set(LS_DEVICE, deviceId); }
 
 // family from URL wins (it survives "add to home screen"), then local storage
 const urlFamily = new URLSearchParams(location.search).get("family") || "";
@@ -89,7 +94,7 @@ async function start(){
   if (configMissing()) { setStatus("חסרות הגדרות Firebase בקובץ firebase-config.js. ראו את מדריך ההתקנה.", true); return; }
   if (started) return; started = true;
   setStatus("מתחבר…");
-  const app = initializeApp(firebaseConfig);
+  const app = firebaseApp = initializeApp(firebaseConfig);
   fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   const auth = getAuth(app);
   onAuthStateChanged(auth, user => { if (user) subscribe(); });
@@ -100,6 +105,7 @@ async function start(){
 let subscribed = false;
 function subscribe(){
   if (subscribed) return; subscribed = true;
+  setupNotifications();
   itemsCol = collection(fs, "families", family, "items");
   histCol = collection(fs, "families", family, "history");
   onSnapshot(itemsCol, snap => {
@@ -127,7 +133,7 @@ async function addItem(name, qty, cat, note){
     showUndo(`עודכנה הכמות: ${name}`, () => updateDoc(ref, before));
   } else {
     const ref = doc(itemsCol); // new id, so the add can be undone right away, even offline
-    fire(setDoc(ref, { name, qty, cat, note, addedBy: me, createdAt: Date.now(), done: false, doneAt: 0, doneBy: "" }));
+    fire(setDoc(ref, { name, qty, cat, note, addedBy: me, addedByDevice: deviceId, createdAt: Date.now(), done: false, doneAt: 0, doneBy: "" }));
     showUndo(`נוסף: ${name}`, () => deleteDoc(ref));
   }
   fire(setDoc(doc(histCol, histKey(name)), { name, cat, count: increment(1), lastAt: Date.now() }, { merge: true }));
@@ -302,6 +308,83 @@ $("leaveFamily").onclick = () => {
   if (b.textContent !== "לחצו שוב לאישור") { b.textContent = "לחצו שוב לאישור"; return; }
   ls.del(LS_FAMILY); const u = new URL(location.href); u.search = ""; location.replace(u.toString());
 };
+
+// ---------- notifications ----------
+// Each phone that turns notifications on saves its push token under families/<code>/tokens/<deviceId>.
+// A small Cloud Function sends a push to every other phone when an item is created.
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+let messagingMod = null, messaging = null;
+
+async function messagingReady(){
+  if (messaging) return messaging;
+  if (!vapidKey || !firebaseApp || !("Notification" in window) || !("serviceWorker" in navigator)) return null;
+  try {
+    messagingMod = await import(MESSAGING_URL);
+    if (!(await messagingMod.isSupported())) return null;
+    messaging = messagingMod.getMessaging(firebaseApp);
+    return messaging;
+  } catch (e) { console.error(e); return null; }
+}
+async function saveToken(){
+  const msg = await messagingReady(); if (!msg) return false;
+  const reg = await navigator.serviceWorker.ready;
+  const token = await messagingMod.getToken(msg, { vapidKey, serviceWorkerRegistration: reg });
+  if (!token) return false;
+  const appUrl = location.origin + location.pathname;
+  await setDoc(doc(fs, "families", family, "tokens", deviceId), { token, name: me, deviceId, appUrl, updatedAt: Date.now() });
+  return true;
+}
+function notifState(){
+  if (!vapidKey) return "off-feature";
+  if (!("Notification" in window)) return isIOS && !isStandalone ? "ios-install" : "unsupported";
+  return Notification.permission; // "default" | "granted" | "denied"
+}
+function renderNotif(){
+  const st = notifState();
+  const txt = {
+    "granted": "ההתראות פעילות בטלפון הזה. תקבלו התראה כשמישהו אחר מוסיף מוצר.",
+    "default": "קבלו התראה כשמישהו מוסיף מוצר לרשימה.",
+    "denied": "ההתראות חסומות. אפשר לאפשר אותן בהגדרות הדפדפן או הטלפון, תחת הרשאות האתר.",
+    "ios-install": "באייפון, התראות עובדות רק אחרי התקנה: בספארי, כפתור השיתוף ואז \"הוספה למסך הבית\". פותחים מהאייקון ומפעילים כאן.",
+    "unsupported": "הדפדפן הזה לא תומך בהתראות. נסו בכרום.",
+    "off-feature": ""
+  }[st] || "";
+  $("notifText").textContent = txt;
+  $("notifBox").hidden = st === "off-feature";
+  $("notifOn").hidden = st !== "default";
+  $("notifOff").hidden = st !== "granted";
+  const showBanner = st === "default" && !ls.get(LS_NOTIF_DISMISSED);
+  $("notifBanner").hidden = !showBanner;
+}
+async function enableNotifications(){
+  try {
+    const p = await Notification.requestPermission();
+    if (p === "granted") {
+      const ok = await saveToken();
+      setStatus(ok ? "ההתראות הופעלו בטלפון הזה" : "לא הצלחנו להפעיל התראות. נסו שוב מאוחר יותר.", !ok);
+    }
+  } catch (e) { console.error(e); setStatus("לא הצלחנו להפעיל התראות. נסו שוב מאוחר יותר.", true); }
+  renderNotif();
+}
+async function disableNotifications(){
+  try {
+    const msg = await messagingReady();
+    if (msg) await messagingMod.deleteToken(msg).catch(() => {});
+    await deleteDoc(doc(fs, "families", family, "tokens", deviceId));
+    $("notifText").textContent = "ההתראות כובו בטלפון הזה.";
+    $("notifOff").hidden = true;
+  } catch (e) { onErr(e); }
+}
+function setupNotifications(){
+  renderNotif();
+  // Tokens can change; refresh quietly on every start when permission is already granted.
+  if (notifState() === "granted") saveToken().catch(e => console.error(e));
+}
+$("notifOn").onclick = enableNotifications;
+$("bannerOn").onclick = enableNotifications;
+$("notifOff").onclick = disableNotifications;
+$("bannerLater").onclick = () => { ls.set(LS_NOTIF_DISMISSED, "1"); $("notifBanner").hidden = true; };
 
 // ---------- boot ----------
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
