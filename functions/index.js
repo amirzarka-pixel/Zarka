@@ -1,15 +1,16 @@
-// Cloud Run function: runs when a new item is created in families/{family}/items/{item}
+// Deployed as Cloud Run function "notify-new-item" (me-west1), entry point notifyNewItem.
+// Runs when a new item is created in families/{family}/items/{item}
 // and sends a push notification to every other phone in that family.
-const functions = require("@google-cloud/functions-framework");
-const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
-const { getMessaging } = require("firebase-admin/messaging");
+import { cloudEvent } from "@google-cloud/functions-framework";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 
 initializeApp();
 const db = getFirestore();
 const DEAD = new Set(["messaging/registration-token-not-registered", "messaging/invalid-registration-token", "messaging/invalid-argument"]);
 
-functions.cloudEvent("notifyNewItem", async (event) => {
+cloudEvent("notifyNewItem", async (event) => {
   // event.subject looks like "documents/families/<family>/items/<item>"
   const m = /families\/([^/]+)\/items\/([^/]+)$/.exec(event.subject || "");
   if (!m) { console.log("unexpected subject", event.subject); return; }
@@ -22,7 +23,7 @@ functions.cloudEvent("notifyNewItem", async (event) => {
 
   const tokens = await db.collection(`families/${family}/tokens`).get();
   const targets = tokens.docs.filter(d => d.id !== item.addedByDevice && d.get("token"));
-  if (!targets.length) return;
+  if (!targets.length) { console.log(`family ${family}: no other phones`); return; }
 
   const qty = item.qty > 1 ? ` × ${item.qty}` : "";
   const note = item.note ? ` (${item.note})` : "";
