@@ -120,24 +120,69 @@ function subscribe(){
 }
 
 // ---------- actions ----------
-async function addItem(name, qty, cat, note){
+async function addItem(name, qty, cat, note, photo){
   name = name.trim(); note = (note || "").trim();
   if (!name || !itemsCol) return;
+  // A new photo wins; otherwise reuse the photo this product had last time.
+  const usePhoto = photo || history.get(histKey(name))?.photo || "";
   const existing = items.find(i => !i.done && i.name === name);
   if (existing) {
-    const before = { qty: existing.qty || 1, note: existing.note || "" };
+    const before = { qty: existing.qty || 1, note: existing.note || "", photo: existing.photo || "" };
     const ch = { qty: Math.min(99, before.qty + qty) };
     if (note && note !== before.note) ch.note = before.note ? before.note + " · " + note : note;
+    if (photo) ch.photo = photo;
     const ref = doc(itemsCol, existing.id);
     fire(updateDoc(ref, ch));
     showUndo(`עודכנה הכמות: ${name}`, () => updateDoc(ref, before));
   } else {
     const ref = doc(itemsCol); // new id, so the add can be undone right away, even offline
-    fire(setDoc(ref, { name, qty, cat, note, addedBy: me, addedByDevice: deviceId, createdAt: Date.now(), done: false, doneAt: 0, doneBy: "" }));
+    fire(setDoc(ref, { name, qty, cat, note, photo: usePhoto, addedBy: me, addedByDevice: deviceId, createdAt: Date.now(), done: false, doneAt: 0, doneBy: "" }));
     showUndo(`נוסף: ${name}`, () => deleteDoc(ref));
   }
-  fire(setDoc(doc(histCol, histKey(name)), { name, cat, count: increment(1), lastAt: Date.now() }, { merge: true }));
+  const h = { name, cat, count: increment(1), lastAt: Date.now() };
+  if (photo) h.photo = photo;
+  fire(setDoc(doc(histCol, histKey(name)), h, { merge: true }));
 }
+
+// ---------- photos ----------
+// Photos are shrunk on the phone (longest side 640px, JPEG) and stored with the item,
+// so no extra storage service is needed. A product keeps its photo for next time.
+function loadImage(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+    img.src = url;
+  });
+}
+async function compressImage(file){
+  const img = await loadImage(file);
+  let max = 640, q = 0.72, out = "";
+  for (let k = 0; k < 5; k++) {
+    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    out = c.toDataURL("image/jpeg", q);
+    if (out.length < 180000) break;   // keep each photo well under Firestore's 1MB document limit
+    max = Math.round(max * 0.8); q = Math.max(0.5, q - 0.08);
+  }
+  return out;
+}
+async function pickPhoto(input){
+  const f = input.files && input.files[0];
+  input.value = "";
+  if (!f) return null;
+  try { return await compressImage(f); }
+  catch { setStatus("לא הצלחנו לקרוא את התמונה. נסו תמונה אחרת.", true); return null; }
+}
+let addPhoto = "";
+function showAddPhoto(){ $("addPhotoBox").hidden = !addPhoto; if (addPhoto) $("addPhotoImg").src = addPhoto; }
+$("itemPhoto").addEventListener("change", async () => { const p = await pickPhoto($("itemPhoto")); if (p) { addPhoto = p; showAddPhoto(); } });
+$("addPhotoRemove").onclick = () => { addPhoto = ""; showAddPhoto(); };
+function openViewer(src, caption){ $("viewerImg").src = src; $("viewerImg").alt = caption; $("viewerCap").textContent = caption; $("viewer").hidden = false; }
+$("viewer").onclick = () => { $("viewer").hidden = true; $("viewerImg").removeAttribute("src"); };
 function toggle(i){
   const ref = doc(itemsCol, i.id);
   const before = { done: !!i.done, doneAt: i.doneAt || 0, doneBy: i.doneBy || "" };
@@ -168,8 +213,8 @@ async function togglePin(name, cat){
 $("addForm").addEventListener("submit", e => {
   e.preventDefault();
   const q = Math.max(1, Math.min(99, parseInt($("itemQty").value, 10) || 1));
-  addItem($("itemName").value, q, $("itemCat").value, $("itemNote").value);
-  $("itemName").value = ""; $("itemQty").value = 1; $("itemNote").value = ""; $("itemName").focus();
+  addItem($("itemName").value, q, $("itemCat").value, $("itemNote").value, addPhoto);
+  $("itemName").value = ""; $("itemQty").value = 1; $("itemNote").value = ""; addPhoto = ""; showAddPhoto(); $("itemName").focus();
 });
 $("itemName").addEventListener("input", () => {
   const h = history.get(histKey($("itemName").value));
@@ -234,7 +279,15 @@ function row(i){
     ? joinMeta(i.doneBy && `נקנה ע״י ${i.doneBy}`, whenText(i.doneAt))
     : joinMeta(i.addedBy && `נוסף ע״י ${i.addedBy}`, whenText(i.createdAt));
   if (m.textContent) b.appendChild(m);
-  li.append(c, b);
+  li.appendChild(c);
+  if (i.photo) {
+    const t = document.createElement("button"); t.type = "button"; t.className = "thumb";
+    t.setAttribute("aria-label", `הגדלת התמונה: ${i.name}`);
+    const im = document.createElement("img"); im.src = i.photo; im.alt = ""; im.loading = "lazy";
+    t.appendChild(im); t.onclick = () => openViewer(i.photo, i.name);
+    li.appendChild(t);
+  }
+  li.appendChild(b);
   if ((i.qty || 1) > 1) { const q = document.createElement("span"); q.className = "qty"; q.textContent = "× " + i.qty; li.appendChild(q); }
   const pinned = history.get(histKey(i.name))?.pinned;
   const s = document.createElement("button"); s.type = "button"; s.className = "star" + (pinned ? " on" : "");
@@ -264,24 +317,42 @@ function renderChips(){
 
 // ---------- edit sheet ----------
 function openEdit(i){
+  hideUndo();
   editing = i;
   $("editName").value = i.name; $("editQty").value = i.qty || 1; $("editCat").value = CATS.includes(i.cat) ? i.cat : "אחר"; $("editNote").value = i.note || "";
   const added = joinMeta(i.addedBy && `נוסף ע״י ${i.addedBy}`, whenText(i.createdAt));
   const bought = i.done ? joinMeta(i.doneBy && `נקנה ע״י ${i.doneBy}`, whenText(i.doneAt)) : "";
   $("editMeta").textContent = [added, bought].filter(Boolean).join("\n");
+  editPhoto = undefined; showEditPhoto(i.photo || "");
   $("editBg").hidden = false;
 }
+let editPhoto; // undefined = unchanged, "" = removed, data URL = new photo
+function showEditPhoto(src){
+  $("editPhotoImg").hidden = !src; if (src) $("editPhotoImg").src = src;
+  $("editPhotoRemove").hidden = !src;
+  $("editPhotoLabel").textContent = src ? "📷 החלפת תמונה" : "📷 הוספת תמונה";
+}
+$("editPhoto").addEventListener("change", async () => { const p = await pickPhoto($("editPhoto")); if (p) { editPhoto = p; showEditPhoto(p); } });
+$("editPhotoRemove").onclick = () => { editPhoto = ""; showEditPhoto(""); };
+$("editPhotoImg").onclick = () => openViewer($("editPhotoImg").src, $("editName").value);
 function closeEdit(){ $("editBg").hidden = true; editing = null; }
 $("editCancel").onclick = closeEdit;
 $("editBg").addEventListener("click", e => { if (e.target === $("editBg")) closeEdit(); });
 $("editForm").addEventListener("submit", async e => {
   e.preventDefault(); if (!editing) return;
   const ch = { name: $("editName").value.trim() || editing.name, qty: Math.max(1, Math.min(99, parseInt($("editQty").value,10) || 1)), cat: $("editCat").value, note: $("editNote").value.trim() };
-  const before = { name: editing.name, qty: editing.qty || 1, cat: editing.cat || "אחר", note: editing.note || "" };
+  const before = { name: editing.name, qty: editing.qty || 1, cat: editing.cat || "אחר", note: editing.note || "", photo: editing.photo || "" };
+  const h = { name: ch.name, cat: ch.cat };
+  if (editPhoto !== undefined) { ch.photo = editPhoto; h.photo = editPhoto; }
+  const hRef = doc(histCol, histKey(ch.name));
+  const hBefore = { photo: history.get(histKey(ch.name))?.photo || "" };
   const ref = doc(itemsCol, editing.id); closeEdit();
   fire(updateDoc(ref, ch));
-  fire(setDoc(doc(histCol, histKey(ch.name)), { name: ch.name, cat: ch.cat }, { merge: true }));
-  showUndo(`נשמרו השינויים: ${ch.name}`, () => updateDoc(ref, before));
+  fire(setDoc(hRef, h, { merge: true }));
+  showUndo(`נשמרו השינויים: ${ch.name}`, () => Promise.all([
+    updateDoc(ref, before),
+    "photo" in h ? setDoc(hRef, hBefore, { merge: true }) : null
+  ]));
 });
 $("editDelete").onclick = () => {
   const { id, ...data } = editing;

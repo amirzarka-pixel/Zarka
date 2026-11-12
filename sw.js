@@ -1,5 +1,5 @@
 // App-shell cache: the list works offline; Firebase keeps its own offline data.
-const CACHE = "kniyot-v4";
+const CACHE = "kniyot-v5";
 const SHELL = ["./", "index.html", "app.js", "styles.css", "firebase-config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

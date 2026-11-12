@@ -61,7 +61,16 @@
     <form class="add card" id="addForm" autocomplete="off">
       <input type="text" id="itemName" list="historyList" placeholder="מה צריך לקנות?" aria-label="שם המוצר" required maxlength="60">
       <input type="number" id="itemQty" value="1" min="1" max="99" aria-label="כמות" inputmode="numeric">
-      <input type="text" id="itemNote" class="full" placeholder="הערה (לא חובה), למשל: 3% שומן" maxlength="80" aria-label="הערה">
+      <div class="full row note-row">
+        <input type="text" id="itemNote" placeholder="הערה (לא חובה), למשל: 3% שומן" maxlength="80" aria-label="הערה">
+        <label class="iconbtn photo-btn" for="itemPhoto" title="צילום או בחירת תמונה" aria-label="צילום או בחירת תמונה">📷</label>
+        <input type="file" id="itemPhoto" accept="image/*" hidden>
+      </div>
+      <div class="full photo-preview" id="addPhotoBox" hidden>
+        <img id="addPhotoImg" alt="התמונה שתצורף למוצר">
+        <span class="hint">התמונה תצורף למוצר</span>
+        <button type="button" class="link" id="addPhotoRemove">הסרה</button>
+      </div>
       <div class="full row">
         <select id="itemCat" aria-label="מחלקה"></select>
         <button class="btn primary" type="submit">הוספה</button>
@@ -101,6 +110,14 @@
     </div>
     <label for="editNote">הערה</label>
     <input type="text" id="editNote" maxlength="80">
+    <div class="photo-edit">
+      <img id="editPhotoImg" alt="תמונת המוצר" hidden>
+      <div class="row">
+        <label class="btn ghost small" for="editPhoto" id="editPhotoLabel">📷 הוספת תמונה</label>
+        <button class="btn ghost small" type="button" id="editPhotoRemove" hidden>הסרת התמונה</button>
+      </div>
+      <input type="file" id="editPhoto" accept="image/*" hidden>
+    </div>
     <p class="hint" id="editMeta"></p>
     <div class="row">
       <button class="btn primary grow" type="submit">שמירה</button>
@@ -108,6 +125,13 @@
       <button class="btn danger" type="button" id="editDelete">מחיקה</button>
     </div>
   </form>
+</div>
+
+<!-- Photo viewer -->
+<div class="viewer" id="viewer" hidden>
+  <img id="viewerImg" alt="">
+  <p id="viewerCap"></p>
+  <span class="hint">לחצו בכל מקום כדי לסגור</span>
 </div>
 
 <!-- Settings sheet -->

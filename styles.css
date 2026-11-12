@@ -85,3 +85,20 @@ li.done .name{text-decoration:line-through;color:var(--muted);font-weight:400}
 .banner{display:flex;flex-direction:column;gap:10px;border-color:var(--accent)}
 .notif-box{border-top:1px solid var(--line);padding-top:10px}
 #editMeta{white-space:pre-line}
+.note-row{align-items:center}
+.note-row input{flex:1}
+.photo-btn{display:grid;place-items:center;flex:none;font-size:1.2rem}
+.photo-preview{display:flex;align-items:center;gap:10px}
+.photo-preview img{width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.photo-preview .hint{flex:1}
+.thumb{flex:none;width:48px;height:48px;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg);cursor:zoom-in}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+li.done .thumb{opacity:.6}
+.photo-edit{display:flex;flex-direction:column;gap:8px}
+.photo-edit img{max-width:100%;max-height:200px;object-fit:contain;border-radius:12px;border:1px solid var(--line);align-self:flex-start}
+label.btn{display:inline-block}
+.viewer{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left));color:#fff;cursor:zoom-out}
+.viewer img{max-width:100%;max-height:75vh;object-fit:contain;border-radius:12px}
+.viewer p{font-family:var(--display);font-size:1.2rem;margin:0}
+.viewer .hint{color:#ccc}
+.sheet{max-height:92vh;overflow-y:auto}
