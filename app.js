@@ -206,6 +206,21 @@ function render(){
   const cl = $("cartList"); cl.textContent = "";
   done.sort((a,b) => (b.doneAt||0) - (a.doneAt||0)).forEach(i => cl.appendChild(row(i)));
 }
+// "היום 21:30", "אתמול 18:05", "יום ג׳ 09:12" (this week), "10.11 09:12" (older)
+const DAYS = ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","שבת"];
+function whenText(ms){
+  if (!ms) return "";
+  const d = new Date(ms), now = new Date();
+  const hm = d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const day0 = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day0(now) - day0(d)) / 86400000);
+  if (diff <= 0) return `היום ${hm}`;
+  if (diff === 1) return `אתמול ${hm}`;
+  if (diff < 7) return `${d.getDay() === 6 ? "שבת" : "יום " + DAYS[d.getDay()]} ${hm}`;
+  return `${d.getDate()}.${d.getMonth() + 1}${d.getFullYear() !== now.getFullYear() ? "." + String(d.getFullYear()).slice(2) : ""} ${hm}`;
+}
+const joinMeta = (...parts) => parts.filter(Boolean).join(" · ");
+
 function row(i){
   const li = document.createElement("li"); if (i.done) li.className = "done";
   const c = document.createElement("button"); c.className = "check"; c.type = "button";
@@ -215,7 +230,9 @@ function row(i){
   const n = document.createElement("span"); n.className = "name"; n.textContent = i.name; b.appendChild(n);
   if (i.note) { const t = document.createElement("span"); t.className = "note"; t.textContent = i.note; b.appendChild(t); }
   const m = document.createElement("span"); m.className = "meta";
-  m.textContent = i.done && i.doneBy ? `נקנה ע״י ${i.doneBy}` : (i.addedBy ? `נוסף ע״י ${i.addedBy}` : "");
+  m.textContent = i.done
+    ? joinMeta(i.doneBy && `נקנה ע״י ${i.doneBy}`, whenText(i.doneAt))
+    : joinMeta(i.addedBy && `נוסף ע״י ${i.addedBy}`, whenText(i.createdAt));
   if (m.textContent) b.appendChild(m);
   li.append(c, b);
   if ((i.qty || 1) > 1) { const q = document.createElement("span"); q.className = "qty"; q.textContent = "× " + i.qty; li.appendChild(q); }
@@ -249,8 +266,9 @@ function renderChips(){
 function openEdit(i){
   editing = i;
   $("editName").value = i.name; $("editQty").value = i.qty || 1; $("editCat").value = CATS.includes(i.cat) ? i.cat : "אחר"; $("editNote").value = i.note || "";
-  const when = i.createdAt ? new Date(i.createdAt).toLocaleDateString("he-IL", { day:"numeric", month:"numeric" }) : "";
-  $("editMeta").textContent = i.addedBy ? `נוסף ע״י ${i.addedBy}${when ? " ב-" + when : ""}` : "";
+  const added = joinMeta(i.addedBy && `נוסף ע״י ${i.addedBy}`, whenText(i.createdAt));
+  const bought = i.done ? joinMeta(i.doneBy && `נקנה ע״י ${i.doneBy}`, whenText(i.doneAt)) : "";
+  $("editMeta").textContent = [added, bought].filter(Boolean).join("\n");
   $("editBg").hidden = false;
 }
 function closeEdit(){ $("editBg").hidden = true; editing = null; }

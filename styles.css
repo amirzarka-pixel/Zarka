@@ -84,3 +84,4 @@ li.done .name{text-decoration:line-through;color:var(--muted);font-weight:400}
 .toast button{background:none;border:0;color:var(--bg);font-weight:700;text-decoration:underline;cursor:pointer;padding:4px 8px;font-size:1rem;white-space:nowrap}
 .banner{display:flex;flex-direction:column;gap:10px;border-color:var(--accent)}
 .notif-box{border-top:1px solid var(--line);padding-top:10px}
+#editMeta{white-space:pre-line}
