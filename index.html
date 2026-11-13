@@ -63,7 +63,9 @@
       <input type="number" id="itemQty" value="1" min="1" max="99" aria-label="כמות" inputmode="numeric">
       <div class="full row note-row">
         <input type="text" id="itemNote" placeholder="הערה (לא חובה), למשל: 3% שומן" maxlength="80" aria-label="הערה">
-        <label class="iconbtn photo-btn" for="itemPhoto" title="צילום או בחירת תמונה" aria-label="צילום או בחירת תמונה">📷</label>
+        <label class="iconbtn photo-btn" for="itemCamera" title="צילום במצלמה" aria-label="צילום במצלמה">📷</label>
+        <label class="iconbtn photo-btn" for="itemPhoto" title="בחירת תמונה מהגלריה" aria-label="בחירת תמונה מהגלריה">🖼️</label>
+        <input type="file" id="itemCamera" accept="image/*" capture="environment" hidden>
         <input type="file" id="itemPhoto" accept="image/*" hidden>
       </div>
       <div class="full photo-preview" id="addPhotoBox" hidden>
@@ -113,9 +115,11 @@
     <div class="photo-edit">
       <img id="editPhotoImg" alt="תמונת המוצר" hidden>
       <div class="row">
-        <label class="btn ghost small" for="editPhoto" id="editPhotoLabel">📷 הוספת תמונה</label>
+        <label class="btn ghost small" for="editCamera">📷 צילום</label>
+        <label class="btn ghost small" for="editPhoto">🖼️ מהגלריה</label>
         <button class="btn ghost small" type="button" id="editPhotoRemove" hidden>הסרת התמונה</button>
       </div>
+      <input type="file" id="editCamera" accept="image/*" capture="environment" hidden>
       <input type="file" id="editPhoto" accept="image/*" hidden>
     </div>
     <p class="hint" id="editMeta"></p>

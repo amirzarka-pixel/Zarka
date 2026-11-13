@@ -8,7 +8,7 @@ import { firebaseConfig, vapidKey } from "./firebase-config.js";
 const MESSAGING_URL = "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 // ---------- constants ----------
-const CATS = ["ירקות ופירות","מוצרי חלב וביצים","לחם ומאפים","בשר ודגים","מזווה ושימורים","קפואים","שתייה","חטיפים ומתוקים","ניקיון וטואלטיקה","תינוקות","אחר"];
+const CATS = ["ירקות ופירות","מוצרי חלב וביצים","לחם ומאפים","בשר ודגים","מזווה ושימורים","קפואים","שתייה","חטיפים ומתוקים","ניקיון וטואלטיקה","תחזוקת בית","אחר"];
 const STARTERS = [["חלב","מוצרי חלב וביצים"],["ביצים","מוצרי חלב וביצים"],["לחם","לחם ומאפים"],["עגבניות","ירקות ופירות"],["מלפפונים","ירקות ופירות"],["בננות","ירקות ופירות"],["גבינה לבנה","מוצרי חלב וביצים"],["פסטה","מזווה ושימורים"],["אורז","מזווה ושימורים"],["חזה עוף","בשר ודגים"],["נייר טואלט","ניקיון וטואלטיקה"]];
 const LS_NAME = "kniyot-name", LS_FAMILY = "kniyot-family", LS_DEVICE = "kniyot-device", LS_NOTIF_DISMISSED = "kniyot-notif-dismissed";
 
@@ -179,7 +179,7 @@ async function pickPhoto(input){
 }
 let addPhoto = "";
 function showAddPhoto(){ $("addPhotoBox").hidden = !addPhoto; if (addPhoto) $("addPhotoImg").src = addPhoto; }
-$("itemPhoto").addEventListener("change", async () => { const p = await pickPhoto($("itemPhoto")); if (p) { addPhoto = p; showAddPhoto(); } });
+for (const id of ["itemPhoto", "itemCamera"]) $(id).addEventListener("change", async () => { const p = await pickPhoto($(id)); if (p) { addPhoto = p; showAddPhoto(); } });
 $("addPhotoRemove").onclick = () => { addPhoto = ""; showAddPhoto(); };
 function openViewer(src, caption){ $("viewerImg").src = src; $("viewerImg").alt = caption; $("viewerCap").textContent = caption; $("viewer").hidden = false; }
 $("viewer").onclick = () => { $("viewer").hidden = true; $("viewerImg").removeAttribute("src"); };
@@ -330,9 +330,8 @@ let editPhoto; // undefined = unchanged, "" = removed, data URL = new photo
 function showEditPhoto(src){
   $("editPhotoImg").hidden = !src; if (src) $("editPhotoImg").src = src;
   $("editPhotoRemove").hidden = !src;
-  $("editPhotoLabel").textContent = src ? "📷 החלפת תמונה" : "📷 הוספת תמונה";
 }
-$("editPhoto").addEventListener("change", async () => { const p = await pickPhoto($("editPhoto")); if (p) { editPhoto = p; showEditPhoto(p); } });
+for (const id of ["editPhoto", "editCamera"]) $(id).addEventListener("change", async () => { const p = await pickPhoto($(id)); if (p) { editPhoto = p; showEditPhoto(p); } });
 $("editPhotoRemove").onclick = () => { editPhoto = ""; showEditPhoto(""); };
 $("editPhotoImg").onclick = () => openViewer($("editPhotoImg").src, $("editName").value);
 function closeEdit(){ $("editBg").hidden = true; editing = null; }
