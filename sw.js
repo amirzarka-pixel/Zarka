@@ -1,6 +1,6 @@
 // App-shell cache: the list works offline; Firebase keeps its own offline data.
-const CACHE = "kniyot-v6";
-const SHELL = ["./", "index.html", "app.js", "styles.css", "firebase-config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+const CACHE = "kniyot-v7";
+const SHELL = ["./", "index.html", "app.js", "styles.css", "firebase-config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "badge-96.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -29,7 +29,7 @@ self.addEventListener("push", e => {
   e.waitUntil(self.registration.showNotification(d.title || "הקניות שלנו", {
     body: d.body || "",
     icon: "icon-192.png",
-    badge: "icon-192.png",
+    badge: "badge-96.png",
     tag: "kniyot-" + (d.family || ""),
     renotify: true,
     dir: "rtl",

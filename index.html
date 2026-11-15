@@ -131,6 +131,20 @@
   </form>
 </div>
 
+<!-- Already on the list -->
+<div class="sheet-bg" id="dupBg" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="dupTitle">
+    <h2 id="dupTitle"></h2>
+    <p class="hint" id="dupInfo"></p>
+    <p id="dupNew" hidden></p>
+    <div class="col">
+      <button class="btn primary" type="button" id="dupMerge">הגדלת הכמות</button>
+      <button class="btn ghost" type="button" id="dupSeparate">הוספה בכל זאת כפריט נפרד</button>
+      <button class="btn ghost" type="button" id="dupCancel">ביטול</button>
+    </div>
+  </div>
+</div>
+
 <!-- Photo viewer -->
 <div class="viewer" id="viewer" hidden>
   <img id="viewerImg" alt="">

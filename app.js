@@ -120,12 +120,25 @@ function subscribe(){
 }
 
 // ---------- actions ----------
-async function addItem(name, qty, cat, note, photo){
+// Returns true when something was added or merged, false when the person cancelled.
+async function addItem(name, qty, cat, note, photo, opts = {}){
   name = name.trim(); note = (note || "").trim();
-  if (!name || !itemsCol) return;
+  if (!name || !itemsCol) return false;
   // A new photo wins; otherwise reuse the photo this product had last time.
   const usePhoto = photo || history.get(histKey(name))?.photo || "";
-  const existing = items.find(i => !i.done && i.name === name);
+  let existing = null;
+  if (!opts.separate) {
+    const match = findSimilar(name);
+    if (match) {
+      const choice = await askDuplicate(match, name, qty);
+      if (choice === "cancel") return false;
+      if (choice === "merge") {
+        existing = match;
+        // "חלב 3%" merged into "חלב": keep the extra detail as a note
+        if (name !== match.name && !note) note = name;
+      }
+    }
+  }
   if (existing) {
     const before = { qty: existing.qty || 1, note: existing.note || "", photo: existing.photo || "" };
     const ch = { qty: Math.min(99, before.qty + qty) };
@@ -142,7 +155,74 @@ async function addItem(name, qty, cat, note, photo){
   const h = { name, cat, count: increment(1), lastAt: Date.now() };
   if (photo) h.photo = photo;
   fire(setDoc(doc(histCol, histKey(name)), h, { merge: true }));
+  return true;
 }
+
+// ---------- similar items ----------
+// Normalise Hebrew names: no niqqud, final letters as regular, no punctuation,
+// and a light stem so "עגבניה" / "עגבניות" and "מלפפון" / "מלפפונים" match.
+const FINALS = { "ך":"כ", "ם":"מ", "ן":"נ", "ף":"פ", "ץ":"צ" };
+function stem(w){
+  if (w.length > 4 && /(ימ|ות)$/.test(w)) return w.slice(0, -2); // after final-letter mapping, "ים" is "ימ"
+  if (w.length > 3 && /ה$/.test(w)) return w.slice(0, -1);
+  return w;
+}
+function tokens(s){
+  return s.toLowerCase()
+    .replace(/[֑-ׇ]/g, "")
+    .replace(/[ךםןףץ]/g, c => FINALS[c])
+    .replace(/[^\p{L}\p{N}%]+/gu, " ")
+    .trim().split(/\s+/).filter(Boolean).map(stem);
+}
+function editDistance(a, b){
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+// 3 = same name, 2 = one name contains the other, 1 = small typo, 0 = different
+function similarity(a, b){
+  const ta = tokens(a), tb = tokens(b);
+  if (!ta.length || !tb.length) return 0;
+  const ja = ta.join(" "), jb = tb.join(" ");
+  if (ja === jb) return 3;
+  const [short, long] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  if (short.join("").length >= 2 && short.every(w => long.includes(w))) return 2;
+  const len = Math.min(ja.length, jb.length), d = editDistance(ja, jb);
+  if ((len >= 4 && d <= 1) || (len >= 8 && d <= 2)) return 1;
+  return 0;
+}
+function findSimilar(name){
+  let best = null, score = 0;
+  for (const i of items) {
+    if (i.done) continue;
+    const s = similarity(name, i.name);
+    if (s > score) { best = i; score = s; }
+  }
+  return best;
+}
+let dupResolve = null;
+function askDuplicate(match, name, qty){
+  hideUndo();
+  const same = match.name.trim() === name;
+  $("dupTitle").textContent = same ? `"${match.name}" כבר ברשימה` : `מוצר דומה כבר ברשימה: "${match.name}"`;
+  $("dupNew").textContent = same ? "" : `ביקשת להוסיף: "${name}"`;
+  $("dupNew").hidden = same;
+  $("dupInfo").textContent = joinMeta((match.qty || 1) > 1 ? `× ${match.qty}` : "", match.note, match.addedBy && `נוסף ע״י ${match.addedBy}`, whenText(match.createdAt));
+  $("dupMerge").textContent = `הגדלת הכמות ל־${Math.min(99, (match.qty || 1) + qty)}`;
+  $("dupBg").hidden = false;
+  $("dupMerge").focus();
+  return new Promise(res => { dupResolve = res; });
+}
+function closeDup(choice){ $("dupBg").hidden = true; const r = dupResolve; dupResolve = null; if (r) r(choice); }
+$("dupMerge").onclick = () => closeDup("merge");
+$("dupSeparate").onclick = () => closeDup("separate");
+$("dupCancel").onclick = () => closeDup("cancel");
+$("dupBg").addEventListener("click", e => { if (e.target === $("dupBg")) closeDup("cancel"); });
 
 // ---------- photos ----------
 // Photos are shrunk on the phone (longest side 640px, JPEG) and stored with the item,
@@ -210,10 +290,12 @@ async function togglePin(name, cat){
 }
 
 // ---------- add form ----------
-$("addForm").addEventListener("submit", e => {
+$("addForm").addEventListener("submit", async e => {
   e.preventDefault();
   const q = Math.max(1, Math.min(99, parseInt($("itemQty").value, 10) || 1));
-  addItem($("itemName").value, q, $("itemCat").value, $("itemNote").value, addPhoto);
+  // Keep what was typed if the person cancels in the "already on the list" dialog.
+  const added = await addItem($("itemName").value, q, $("itemCat").value, $("itemNote").value, addPhoto);
+  if (!added) { $("itemName").focus(); return; }
   $("itemName").value = ""; $("itemQty").value = 1; $("itemNote").value = ""; addPhoto = ""; showAddPhoto(); $("itemName").focus();
 });
 $("itemName").addEventListener("input", () => {
@@ -312,7 +394,10 @@ function renderChips(){
   $("staplesBox").hidden = !list.length;
   const missing = pinned.filter(h => !openNames.has(h.name));
   $("addAllStaples").hidden = missing.length < 2;
-  $("addAllStaples").onclick = async () => { for (const h of missing) await addItem(h.name, 1, CATS.includes(h.cat) ? h.cat : "אחר", ""); };
+  // Staples already on the list (same or similar name) are skipped, not asked about.
+  $("addAllStaples").onclick = async () => {
+    for (const h of missing) if (!findSimilar(h.name)) await addItem(h.name, 1, CATS.includes(h.cat) ? h.cat : "אחר", "", "", { separate: true });
+  };
 }
 
 // ---------- edit sheet ----------
