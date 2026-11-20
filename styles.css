@@ -102,3 +102,28 @@ label.btn{display:inline-block}
 .viewer p{font-family:var(--display);font-size:1.2rem;margin:0}
 .viewer .hint{color:#ccc}
 .sheet{max-height:92vh;overflow-y:auto}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.toolbar .btn{flex:1}
+.export-text{unicode-bidi:plaintext;white-space:pre-wrap;font-family:var(--body);font-size:.95rem;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;margin:0;max-height:40vh;overflow:auto;direction:rtl;text-align:right}
+.export-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.export-actions .btn.primary{grid-column:1/-1}
+.btn:disabled{opacity:.5;cursor:default}
+.sheet.tall{height:88vh}
+.bought-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1}
+.bought-list h2{margin-top:6px}
+.print-view{display:none}
+@media print{
+  body.printing{background:#fff;color:#000;padding:0}
+  body.printing > *:not(#printView){display:none!important}
+  body.printing #printView{display:block;font-family:var(--body);direction:rtl;color:#000}
+  #printView h1{font-family:var(--display);font-size:22pt;margin:0 0 2pt}
+  #printView .print-sub{color:#555;margin:0 0 10pt}
+  #printView h2{font-size:13pt;color:#2f6b45;border-bottom:1px solid #ccc;padding-bottom:2pt;margin:12pt 0 4pt;break-after:avoid}
+  #printView ul{list-style:none;margin:0;padding:0}
+  #printView li{display:flex;align-items:center;gap:8pt;padding:4pt 0;border-bottom:1px dotted #ddd;break-inside:avoid;font-size:12pt}
+  #printView .print-box{width:11pt;height:11pt;border:1.5pt solid #333;border-radius:2pt;flex:none}
+  #printView img{width:32pt;height:32pt;object-fit:cover;border-radius:4pt}
+  #printView .print-name{font-weight:600}
+  #printView .print-note{color:#555}
+}
+@media print{@page{margin:14mm}}

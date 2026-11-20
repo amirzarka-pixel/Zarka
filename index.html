@@ -88,13 +88,19 @@
       <div class="chips" id="chips"></div>
     </div>
 
+    <div class="toolbar">
+      <button class="btn ghost" type="button" id="exportBtn">📋 רשימה לקנייה</button>
+      <button class="btn ghost" type="button" id="boughtBtn">🕘 נקנו לאחרונה</button>
+    </div>
+
     <div id="lists"></div>
 
     <section id="cartSec" hidden>
       <div class="cartbar">
         <h2 id="cartTitle">בעגלה</h2>
-        <div id="clearArea"><button class="btn ghost small" id="clearBtn" type="button">ניקוי מה שנקנה</button></div>
+        <div id="clearArea"><button class="btn ghost small" id="clearBtn" type="button">העברה ל"נקנו לאחרונה"</button></div>
       </div>
+      <p class="hint">מוצרים שנקנו עוברים ל"נקנו לאחרונה" אוטומטית אחרי יום.</p>
       <ul id="cartList" class="items"></ul>
     </section>
   </section>
@@ -130,6 +136,36 @@
     </div>
   </form>
 </div>
+
+<!-- Shopping list export -->
+<div class="sheet-bg" id="exportBg" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="exportTitle">
+    <h2 id="exportTitle">רשימה לקנייה</h2>
+    <div class="export-text" id="exportText"></div>
+    <div class="export-actions">
+      <button class="btn primary" type="button" id="exportWa">שליחה בוואטסאפ</button>
+      <button class="btn ghost" type="button" id="exportShare">שיתוף…</button>
+      <button class="btn ghost" type="button" id="exportCopy">העתקה</button>
+      <button class="btn ghost" type="button" id="exportPdf">PDF / הדפסה</button>
+    </div>
+    <p class="hint" id="exportMsg"></p>
+    <button class="btn ghost" type="button" id="exportClose">סגירה</button>
+  </div>
+</div>
+
+<!-- Bought recently -->
+<div class="sheet-bg" id="boughtBg" hidden>
+  <div class="sheet tall" role="dialog" aria-labelledby="boughtTitle">
+    <h2 id="boughtTitle">נקנו לאחרונה</h2>
+    <p class="hint">60 הימים האחרונים. "החזרה לרשימה" מוסיפה את המוצר שוב לקניות.</p>
+    <p class="empty" id="boughtEmpty" hidden><strong>עדיין אין כאן כלום</strong>מוצרים שנקנו יופיעו כאן יום אחרי הקנייה.</p>
+    <div id="boughtList" class="bought-list"></div>
+    <button class="btn ghost" type="button" id="boughtClose">סגירה</button>
+  </div>
+</div>
+
+<!-- Print / PDF view (shown only while printing) -->
+<div id="printView" class="print-view" aria-hidden="true"></div>
 
 <!-- Already on the list -->
 <div class="sheet-bg" id="dupBg" hidden>

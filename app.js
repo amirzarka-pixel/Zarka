@@ -26,7 +26,7 @@ const validCode = c => /^[a-z0-9]{20,40}$/.test(c);
 let me = ls.get(LS_NAME);
 let family = "";
 let items = [], history = new Map();
-let fs = null, itemsCol = null, histCol = null;
+let fs = null, itemsCol = null, histCol = null, boughtCol = null;
 let editing = null;
 let firebaseApp = null;
 // A stable id for this phone, so notifications skip the person who added the item.
@@ -108,16 +108,189 @@ function subscribe(){
   setupNotifications();
   itemsCol = collection(fs, "families", family, "items");
   histCol = collection(fs, "families", family, "history");
+  boughtCol = collection(fs, "families", family, "bought");
   onSnapshot(itemsCol, snap => {
     items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render(); renderChips();
-    if (!snap.metadata.fromCache) onlineStatus();
+    if (!snap.metadata.fromCache) { onlineStatus(); archiveOld(); }
+    if (!$("exportBg").hidden) renderExport();
   }, err => { console.error(err); setStatus("אין גישה לרשימה. בדקו את כללי האבטחה ב-Firebase.", true); });
   onSnapshot(histCol, snap => {
     history = new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
     render(); renderChips(); fillDatalist();
   }, err => console.error(err));
+  onSnapshot(boughtCol, snap => {
+    bought = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!snap.metadata.fromCache) purgeOldBought();
+    if (!$("boughtBg").hidden) renderBought();
+  }, err => console.error(err));
 }
+
+// ---------- bought history ----------
+// Items stay in "בעגלה" for a day after they were bought, then move to families/<code>/bought.
+// Any family phone that opens the app does the move; doing it twice is harmless.
+const ARCHIVE_AFTER = 24 * 3600 * 1000, KEEP_BOUGHT = 60 * 24 * 3600 * 1000;
+let bought = [], lastArchive = 0, lastPurge = 0;
+const returned = new Set(); // bought items put back on the list during this visit
+function boughtRecord(data){
+  // The photo stays in the product's history (it comes back when the item is re-added),
+  // so the bought list stays small.
+  const { photo, ...rest } = data;
+  return { ...rest, doneAt: data.doneAt || Date.now(), archivedAt: Date.now() };
+}
+function moveToBought(list){
+  const recs = list.map(({ id, ...data }) => ({ id, data, rec: boughtRecord(data) }));
+  for (let k = 0; k < recs.length; k += 200) {
+    const b = writeBatch(fs);
+    recs.slice(k, k + 200).forEach(r => { b.set(doc(boughtCol, r.id), r.rec); b.delete(doc(itemsCol, r.id)); });
+    fire(b.commit());
+  }
+  return recs;
+}
+function archiveOld(){
+  if (Date.now() - lastArchive < 60000) return;
+  const old = items.filter(i => i.done && i.doneAt && Date.now() - i.doneAt > ARCHIVE_AFTER);
+  if (!old.length) return;
+  lastArchive = Date.now();
+  moveToBought(old);
+}
+function purgeOldBought(){
+  if (Date.now() - lastPurge < 3600000) return;
+  const old = bought.filter(b => (b.doneAt || b.archivedAt || 0) < Date.now() - KEEP_BOUGHT);
+  if (!old.length) return;
+  lastPurge = Date.now();
+  for (let k = 0; k < old.length; k += 400) { const b = writeBatch(fs); old.slice(k, k + 400).forEach(o => b.delete(doc(boughtCol, o.id))); fire(b.commit()); }
+}
+function dayLabel(ms){
+  const d = new Date(ms), now = new Date();
+  const day0 = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day0(now) - day0(d)) / 86400000);
+  const date = `${d.getDate()}.${d.getMonth() + 1}`;
+  if (diff <= 0) return `היום · ${date}`;
+  if (diff === 1) return `אתמול · ${date}`;
+  return `${d.getDay() === 6 ? "שבת" : "יום " + DAYS[d.getDay()]} · ${date}`;
+}
+function renderBought(){
+  const box = $("boughtList"); box.textContent = "";
+  const list = [...bought].sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+  $("boughtEmpty").hidden = list.length > 0;
+  let curDay = "", ul = null;
+  for (const it of list) {
+    const label = dayLabel(it.doneAt || it.archivedAt);
+    if (label !== curDay) {
+      curDay = label;
+      const h = document.createElement("h2"); h.textContent = label;
+      ul = document.createElement("ul"); ul.className = "items";
+      box.append(h, ul);
+    }
+    const li = document.createElement("li");
+    const body = document.createElement("div"); body.className = "body";
+    const n = document.createElement("span"); n.className = "name"; n.textContent = it.name + ((it.qty || 1) > 1 ? ` × ${it.qty}` : "");
+    body.appendChild(n);
+    if (it.note) { const t = document.createElement("span"); t.className = "note"; t.textContent = it.note; body.appendChild(t); }
+    const hm = new Date(it.doneAt || it.archivedAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const m = document.createElement("span"); m.className = "meta"; m.textContent = joinMeta(it.doneBy && `נקנה ע״י ${it.doneBy}`, hm);
+    body.appendChild(m);
+    const back = document.createElement("button"); back.type = "button"; back.className = "btn ghost small";
+    const setDone = () => { back.textContent = "נוסף ✓"; back.disabled = true; };
+    back.textContent = "החזרה לרשימה";
+    if (returned.has(it.id)) setDone();
+    back.onclick = async () => {
+      returned.add(it.id);
+      const ok = await addItem(it.name, it.qty || 1, CATS.includes(it.cat) ? it.cat : "אחר", it.note || "");
+      if (ok) { setDone(); if (!$("boughtBg").hidden) renderBought(); } else returned.delete(it.id);
+    };
+    li.append(body, back); ul.appendChild(li);
+  }
+}
+$("boughtBtn").onclick = () => { hideUndo(); renderBought(); $("boughtBg").hidden = false; };
+$("boughtClose").onclick = () => { $("boughtBg").hidden = true; };
+$("boughtBg").addEventListener("click", e => { if (e.target === $("boughtBg")) $("boughtBg").hidden = true; });
+
+// ---------- shopping list export ----------
+function openGroups(){
+  const open = items.filter(i => !i.done);
+  return CATS.map(cat => ({ cat, list: open.filter(i => (CATS.includes(i.cat) ? i.cat : "אחר") === cat).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)) }))
+    .filter(g => g.list.length);
+}
+function todayTitle(){
+  const d = new Date();
+  return `${d.getDay() === 6 ? "שבת" : "יום " + DAYS[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}`;
+}
+function exportText(){
+  const groups = openGroups();
+  const total = groups.reduce((s, g) => s + g.list.length, 0);
+  if (!total) return "";
+  const lines = [`🛒 רשימת קניות – ${todayTitle()}`, ""];
+  for (const g of groups) {
+    lines.push(`*${g.cat}*`);
+    for (const i of g.list) lines.push(`▫️ ${i.name}${(i.qty || 1) > 1 ? ` × ${i.qty}` : ""}${i.note ? ` (${i.note})` : ""}`);
+    lines.push("");
+  }
+  lines.push(`סה״כ ${total} פריטים`);
+  return lines.join("\n");
+}
+function renderExport(){
+  const txt = exportText();
+  // Preview: WhatsApp's *bold* markers shown as real bold, one line per row.
+  const box = $("exportText"); box.textContent = "";
+  for (const line of (txt || "אין כרגע מוצרים לקנות.").split("\n")) {
+    const row = document.createElement("div"); row.dir = "rtl";
+    const m = /^\*(.+)\*$/.exec(line);
+    if (m) { const b = document.createElement("strong"); b.textContent = m[1]; row.appendChild(b); }
+    else row.textContent = line || "\u00a0";
+    box.appendChild(row);
+  }
+  for (const id of ["exportWa", "exportShare", "exportCopy", "exportPdf"]) $(id).disabled = !txt;
+  $("exportShare").hidden = !navigator.share;
+  $("exportMsg").textContent = "";
+}
+$("exportBtn").onclick = () => { hideUndo(); renderExport(); $("exportBg").hidden = false; };
+$("exportClose").onclick = () => { $("exportBg").hidden = true; };
+$("exportBg").addEventListener("click", e => { if (e.target === $("exportBg")) $("exportBg").hidden = true; });
+$("exportWa").onclick = () => {
+  const url = "https://wa.me/?text=" + encodeURIComponent(exportText());
+  const w = window.open(url, "_blank");
+  if (!w) location.href = url;
+};
+$("exportShare").onclick = async () => { try { await navigator.share({ title: "רשימת קניות", text: exportText() }); } catch {} };
+$("exportCopy").onclick = async () => {
+  try { await navigator.clipboard.writeText(exportText()); $("exportMsg").textContent = "הרשימה הועתקה. אפשר להדביק אותה בכל מקום."; }
+  catch {
+    const r = document.createRange(); r.selectNodeContents($("exportText")); // fallback: select the preview
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    $("exportMsg").textContent = "סמנו והעתיקו את הטקסט.";
+  }
+};
+// PDF: a print-styled page; the phone's print dialog offers "Save as PDF".
+$("exportPdf").onclick = () => {
+  const pv = $("printView"); pv.textContent = "";
+  const groups = openGroups();
+  const h = document.createElement("h1"); h.textContent = `רשימת קניות – ${todayTitle()}`;
+  const sub = document.createElement("p"); sub.className = "print-sub"; sub.textContent = `${groups.reduce((s, g) => s + g.list.length, 0)} פריטים`;
+  pv.append(h, sub);
+  for (const g of groups) {
+    const gh = document.createElement("h2"); gh.textContent = g.cat;
+    const ul = document.createElement("ul");
+    for (const i of g.list) {
+      const li = document.createElement("li");
+      const box = document.createElement("span"); box.className = "print-box";
+      li.appendChild(box);
+      if (i.photo) { const im = document.createElement("img"); im.src = i.photo; im.alt = ""; li.appendChild(im); }
+      const t = document.createElement("span"); t.className = "print-name";
+      t.textContent = i.name + ((i.qty || 1) > 1 ? ` × ${i.qty}` : "");
+      li.appendChild(t);
+      if (i.note) { const nt = document.createElement("span"); nt.className = "print-note"; nt.textContent = i.note; li.appendChild(nt); }
+      ul.appendChild(li);
+    }
+    pv.append(gh, ul);
+  }
+  $("exportBg").hidden = true;
+  document.body.classList.add("printing");
+  const done = () => { document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
+  addEventListener("afterprint", done);
+  setTimeout(() => { window.print(); setTimeout(done, 1000); }, 300);
+};
 
 // ---------- actions ----------
 // Returns true when something was added or merged, false when the person cancelled.
@@ -447,22 +620,17 @@ $("editDelete").onclick = () => {
 
 // ---------- clear purchased ----------
 const clearBtnEl = $("clearBtn");
+// Moves everything in the cart to "נקנו לאחרונה" right away (otherwise it happens after a day).
 clearBtnEl.onclick = () => {
-  const a = $("clearArea"); a.textContent = "";
-  const w = document.createElement("div"); w.className = "confirm";
-  const t = document.createElement("span"); t.textContent = "למחוק את מה שבעגלה?";
-  const y = document.createElement("button"); y.className = "btn danger small"; y.type = "button"; y.textContent = "מחיקה";
-  const n = document.createElement("button"); n.className = "btn ghost small"; n.type = "button"; n.textContent = "ביטול";
-  const restore = () => { a.textContent = ""; a.appendChild(clearBtnEl); };
-  y.onclick = () => {
-    restore();
-    const done = items.filter(i => i.done).map(({ id, ...data }) => ({ id, data }));
-    const inBatches = op => { for (let k = 0; k < done.length; k += 400) { const b = writeBatch(fs); done.slice(k, k + 400).forEach(d => op(b, d)); fire(b.commit()); } };
-    inBatches((b, d) => b.delete(doc(itemsCol, d.id)));
-    showUndo(`נמחקו ${done.length} פריטים מהעגלה`, () => inBatches((b, d) => b.set(doc(itemsCol, d.id), d.data)));
-  };
-  n.onclick = restore;
-  w.append(t, y, n); a.appendChild(w);
+  const recs = moveToBought(items.filter(i => i.done));
+  if (!recs.length) return;
+  showUndo(recs.length === 1 ? `"${recs[0].data.name}" הועבר ל"נקנו לאחרונה"` : `${recs.length} פריטים הועברו ל"נקנו לאחרונה"`, () => {
+    for (let k = 0; k < recs.length; k += 200) {
+      const b = writeBatch(fs);
+      recs.slice(k, k + 200).forEach(r => { b.set(doc(itemsCol, r.id), r.data); b.delete(doc(boughtCol, r.id)); });
+      fire(b.commit());
+    }
+  });
 };
 
 // ---------- settings ----------
