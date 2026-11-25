@@ -12,6 +12,7 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
+  if (url.pathname.includes("/austria/")) return; // אפליקציית הטיול מנהלת את עצמה
   e.respondWith(
     fetch(e.request).then(res => {
       const copy = res.clone();

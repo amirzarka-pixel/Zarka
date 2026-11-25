@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    match /votes/{name} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.resource.data.likes is list && request.resource.data.likes.size() < 100;
+    }
+    match /plan/{id} {
+      allow read, write: if signedIn();
+    }
+    match /photos/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.thumb.size() < 200000;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+    match /photoFull/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.img.size() < 1000000;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>אוסטריה 2027</title>
+<meta name="theme-color" content="#0b3a53">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="אוסטריה 2027">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#fff,#0d1b24);--ink:light-dark(#14202a,#eef3f6);--mute:light-dark(#5b6b77,#9fb1bd);
+--lake:#0b3a53;--card:light-dark(#f3f6f8,#15293a);--line:light-dark(#dde4e9,#24394b);--sign:#ffd23f;--red:#c8102e}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Rubik,system-ui,sans-serif;overflow-x:clip;padding-bottom:env(safe-area-inset-bottom)}
+button,input,select,textarea{font:inherit;color:inherit}
+.top{background:var(--lake);color:#fff;padding:calc(14px + env(safe-area-inset-top)) max(4vw,16px) 0}
+.head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;max-width:1240px;margin:auto}
+h1{font-size:clamp(26px,5vw,40px);line-height:1.05;margin:0;font-weight:800}
+.sub{color:#cfe3ee;margin:2px 0 0;font-size:14px}
+.sign{background:var(--sign);color:#14202a;font-weight:700;padding:6px 12px;border-radius:6px;white-space:nowrap}
+.sign b{font-size:20px}
+nav{display:flex;gap:2px;max-width:1240px;margin:12px auto 0;overflow-x:auto;scrollbar-width:none}
+nav button{background:transparent;border:0;color:#cfe3ee;padding:10px 14px;min-height:46px;cursor:pointer;font-weight:500;border-radius:10px 10px 0 0;white-space:nowrap}
+nav button[aria-selected=true]{background:var(--bg);color:var(--ink)}
+main{max-width:1240px;margin:auto;padding:16px max(4vw,16px) 60px}
+#map{height:min(62vh,560px);border-radius:14px;z-index:0;background:#cfe3ee}
+.mapbar{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.who{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.who input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-height:44px;width:11em}
+.btn{border:0;border-radius:8px;padding:8px 14px;min-height:44px;cursor:pointer;background:var(--lake);color:#fff;font-weight:500}
+.btn.y{background:var(--sign);color:#14202a}.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;min-height:40px;cursor:pointer;font-size:14px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:12px}
+.card{background:var(--card);border-radius:12px;padding:14px 16px;border-inline-start:6px solid var(--c,#888);display:flex;flex-direction:column;gap:6px;scroll-margin-top:16px}
+.card.sel{outline:3px solid var(--sign)}
+.card h3{margin:0;font-size:18px;line-height:1.25}
+.de{font-size:13px;color:var(--mute);direction:ltr;text-align:right}
+.meta{font-size:14px;color:var(--mute);display:flex;flex-wrap:wrap;gap:4px 12px}
+.tag{font-size:12px;border-radius:6px;padding:2px 8px;border:1px solid var(--line)}
+.tag.rain{border-color:#3b82c4;color:light-dark(#1d5f99,#8cc4f2)}.tag.far{border-color:var(--red);color:light-dark(#a00d24,#ff8a99)}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row a{color:inherit;font-size:14px;text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:40px;display:inline-flex;align-items:center}
+.like{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 12px;min-height:40px;cursor:pointer;font-size:14px}
+.like[aria-pressed=true]{background:var(--red);color:#fff;border-color:var(--red)}
+.small{font-size:13px;color:var(--mute)}
+h2{font-size:24px;margin:0 0 6px}.lead{color:var(--mute);margin:0 0 14px;max-width:70ch}
+.day{display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.day .d{font-weight:800;font-size:22px;line-height:1.1}.day .d small{display:block;font-size:14px;font-weight:400;color:var(--mute)}
+select{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px;min-height:44px;max-width:100%}
+.picks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pick{font-size:14px;border:1px solid var(--line);border-radius:999px;padding:5px 10px;cursor:pointer;background:var(--bg);min-height:36px}
+.pick[aria-pressed=true]{background:var(--sign);color:#14202a;border-color:var(--sign)}
+.rank{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.rank .n{font-weight:800;font-size:20px;color:var(--mute);text-align:center}.bar{height:8px;border-radius:4px;background:var(--red);margin-top:4px}
+.add{background:var(--card);border-radius:12px;padding:14px;display:grid;gap:10px;margin-bottom:18px}
+.add textarea{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-height:64px;resize:vertical;width:100%}
+.preview{display:flex;gap:6px;flex-wrap:wrap}.preview img{width:72px;height:72px;object-fit:cover;border-radius:8px}
+.feedday{margin:22px 0 10px;font-size:20px;font-weight:800;border-bottom:3px solid var(--sign);display:inline-block}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:12px}
+.ph{background:var(--card);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.ph img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:zoom-in;display:block;background:var(--line)}
+.ph .tx{padding:10px 12px;display:grid;gap:2px}
+.ph .by{font-weight:700;font-size:14px}.ph .del{border:0;background:none;color:var(--mute);font-size:13px;cursor:pointer;justify-self:start;padding:4px 0}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:10px;padding:16px}
+.lb.on{display:flex}.lb img{max-width:100%;max-height:82vh;border-radius:8px}.lb p{color:#fff;margin:0;text-align:center}
+.lb button{position:absolute;top:calc(12px + env(safe-area-inset-top));inset-inline-start:12px}
+.info{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:12px}
+.info .card{border-inline-start-color:var(--lake)}
+.banner{background:light-dark(#fff4cc,#3a3214);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+.leaflet-container{font-family:inherit}.leaflet-popup-content{direction:rtl;text-align:right;margin:10px 12px}
+.pin{width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.star{font-size:30px;line-height:30px;color:var(--sign);text-shadow:0 0 3px #000,0 0 3px #000}
+:focus-visible{outline:3px solid var(--sign);outline-offset:2px}
+@media(max-width:600px){.day{grid-template-columns:1fr;gap:6px}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="head">
+    <div><h1>אוסטריה 2027</h1><p class="sub">23–30 ביולי · שתי משפחות · 11 מטיילים</p></div>
+    <div class="sign" id="count"></div>
+  </div>
+  <nav role="tablist" id="tabs">
+    <button data-t="map" aria-selected="true">מפה</button>
+    <button data-t="places" aria-selected="false">מקומות</button>
+    <button data-t="days" aria-selected="false">ימים</button>
+    <button data-t="votes" aria-selected="false">הצבעות</button>
+    <button data-t="photos" aria-selected="false">יומן תמונות</button>
+    <button data-t="hotel" aria-selected="false">מידע</button>
+  </nav>
+</header>
+<main>
+  <div class="banner" id="banner" hidden></div>
+  <div class="who"><label for="me">מי אני:</label><input id="me" placeholder="השם שלך" maxlength="20" autocomplete="given-name"><span class="small" id="sync"></span></div>
+
+  <section id="map-s">
+    <div id="map"></div>
+    <div class="mapbar">
+      <button class="btn ghost" id="fitNear">ליד המלון</button>
+      <button class="btn ghost" id="fitAll">כל המקומות</button>
+      <button class="btn ghost" id="locate">איפה אני</button>
+    </div>
+    <div class="chips" id="mCat"></div>
+  </section>
+
+  <section id="places-s" hidden>
+    <div class="chips" id="fCat"></div>
+    <div class="chips" id="fArea"></div>
+    <div class="grid" id="list"></div>
+  </section>
+
+  <section id="days-s" hidden>
+    <h2>תוכנית הימים</h2>
+    <p class="lead">לכל יום בוחרים אזור ומסמנים מקומות. השינויים נשמרים לכולם. המספר ליד מקום הוא כמה הצביעו עליו.</p>
+    <div id="plan"></div>
+    <p><button class="btn ghost" id="resetPlan">חזרה להצעה ההתחלתית</button> <span class="small" id="planStatus"></span></p>
+  </section>
+
+  <section id="votes-s" hidden>
+    <h2>מה הכי מבוקש</h2>
+    <p class="lead">לוחצים "רוצה" על מקומות בלשונית המקומות או במפה. כאן רואים את הדירוג.</p>
+    <div id="ranking"></div>
+  </section>
+
+  <section id="photos-s" hidden>
+    <h2>יומן תמונות</h2>
+    <div class="add">
+      <div class="row">
+        <label class="btn y" for="file" style="display:inline-flex;align-items:center">בחירת תמונות</label>
+        <input id="file" type="file" accept="image/*" multiple hidden>
+        <select id="phDay" aria-label="יום"></select>
+        <select id="phPlace" aria-label="מקום"><option value="">בלי מקום</option></select>
+      </div>
+      <div class="preview" id="preview"></div>
+      <textarea id="caption" maxlength="300" placeholder="משפט על הרגע (לא חובה)"></textarea>
+      <div class="row"><button class="btn" id="upload" disabled>העלאה</button><span class="small" id="upStatus"></span></div>
+    </div>
+    <div id="feed"></div>
+  </section>
+
+  <section id="hotel-s" hidden>
+    <h2>מידע שימושי</h2>
+    <div class="info">
+      <div class="card"><h3>Landhaus Steiner</h3>
+        <div>Untere Marktstraße 3, 5541 Altenmarkt</div>
+        <div class="meta"><span>טלפון: +43 6452 6001</span><span>info@landhaus-steiner.at</span></div>
+        <div class="meta"><span>צ׳ק-אין 14:00</span><span>צ׳ק-אאוט 10:00</span></div>
+        <div class="small">עדיין בבדיקה, לא הוזמן</div>
+        <div class="row"><a href="https://www.google.com/maps/dir/?api=1&destination=47.3826,13.4196" target="_blank" rel="noopener">ניווט</a><a href="https://www.landhaus-steiner.at/" target="_blank" rel="noopener">אתר המלון</a></div>
+      </div>
+      <div class="card"><h3>חלוקת חדרים מתוכננת</h3><div>זוג 1 · חדר קומפורט<br>זוג 2 · חדר קומפורט<br>3 הבנים · חדר קומפורט לשלושה<br>4 הבנות · חדר משפחה</div></div>
+      <div class="card"><h3>חשוב לדעת</h3><div>חירום: 112 · המלון נותן כרטיס תחבורה ציבורית חינם · ארוחת בוקר בלבד · בריכה מקורה וסאונה</div></div>
+      <div class="card"><h3>יום גשום?</h3><div id="rainList"></div></div>
+      <div class="card"><h3>להתקין כאפליקציה</h3><div>אנדרואיד: תפריט ⋮ ← "הוספה למסך הבית".<br>אייפון: ב-Safari, כפתור השיתוף ← "הוסף למסך הבית".</div></div>
+    </div>
+  </section>
+</main>
+<div class="lb" id="lb" role="dialog" aria-modal="true"><button class="btn y" id="lbClose">סגירה</button><img id="lbImg" alt=""><p id="lbTx"></p></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

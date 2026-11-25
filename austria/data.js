@@ -1,0 +1,53 @@
+// המקומות מהמפה של אדווה: [id, קטגוריה, אזור, שם, שם מקורי, lat, lng, הערה, מתאים לגשם]
+export const HOTEL={name:'Landhaus Steiner',lat:47.3826,lng:13.4196};
+export const CAT={ex:{n:'אקסטרים',c:'#e4572e'},park:{n:'פארקים ואתרים',c:'#1f8a70'},food:{n:'מסעדות',c:'#8a5cf6'}};
+export const AREA={near:'ליד המלון',hall:'הלשטאט ואגמים',salz:'זלצבורג והדרך',pinz:'גסטיין ופינצגאו',east:'שטיריה מזרח',tirol:'טירול (רחוק)'};
+export const DAYS=[['23.7','ה׳','הגעה'],['24.7','ו׳',''],['25.7','שבת',''],['26.7','א׳',''],['27.7','ב׳',''],['28.7','ג׳',''],['29.7','ד׳',''],['30.7','ה׳','חזרה']];
+export const DEFAULT_PLAN={'23.7':{a:'near',p:['flori','paul']},'24.7':{a:'hall',p:['hallstatt','hallsalt','panorama','fingers']},'25.7':{a:'salz',p:['werfen','golling','bluntau','hangar','mirabell']},'26.7':{a:'near',p:['erleb','lucky','amade']},'27.7':{a:'pinz',p:['thun','schloss','seisen']},'28.7':{a:'hall',p:['treppe','stoder','grob']},'29.7':{a:'salz',p:['hallein','kelten','anif']},'30.7':{a:'near',p:[]}};
+export const PLACES=[
+['flyxxl','ex','pinz','אומגה Flying Fox XXL','Flying Fox XXL',47.4391,12.7194,'אומגה למתבגרים',0],
+['lucky','ex','near','מזחלת הרים Lucky Flitzer','Rodelbahn Lucky Flitzer',47.3559,13.3853,'',0],
+['baum','ex','near','פארק חבלים','Baumparcours',47.3518,13.2071,'פארק חבלים חינמי, מסודר ומהנה לילדים',0],
+['anif','ex','salz','פארק חבלים אניף','Kletterpark Waldbad Anif',47.7331,13.0798,'פארק חבלים לכל המשפחה, מתאים גם למתבגרים. מזומן בלבד',0],
+['kart','ex','salz','קרטינג זלצבורג','Kartworld Salzburg',47.8077,13.0675,'פארק קרטינג',1],
+['horn','ex','pinz','מסלול חבלים Hornpark','Hornpark Climbing Forest',47.5168,12.427,'מסלול חבלים גבוה',0],
+['schloss','ex','pinz','רכבל Schlossalm','Schlossalmbahn Gastein',47.1682,13.098,'רכבל עם נוף קסום, כלול בכרטיס זלצבורגר, נהדר גם ליום גשם',1],
+['gerlos','ex','tirol','חבלים גרלוס','Hochseilgarten Gerlos',47.2184,12.0225,'מסלול חבלים מהנה, מגובה 120 ס״מ. יש לידו גם אומגה טובה',0],
+['gerlosfox','ex','tirol','אומגה גרלוס','Flying Fox Gerlos',47.2244,12.0293,'אומגה וטיפוס בחבלים. צריך להירשם מראש',0],
+['airrofan','ex','tirol','חוויה ממעוף הציפור','Airrofan',47.4423,11.764,'למי שלא מפחד מגבהים. כמה דקות, אפשר לשלב עם האגם הסמוך',0],
+['speicher','ex','tirol','אזור טיולים רגליים','Speicherteich',47.4444,11.761,'אזור לטיולים רגליים',0],
+['eis','ex','tirol','מערת קרח','Natur Eis Palast',47.0618,11.6798,'גם בקיץ 0 מעלות. פתוח עד הצהריים',1],
+['highline','ex','tirol','גשר תלוי Highline179','Highline179',47.4642,10.7186,'הגשר התלוי הארוך, לא לבעלי לב חלש',0],
+['imst','ex','tirol','מזחלות Imst','Alpine Coaster Imst',47.2419,10.7217,'מזחלות',0],
+['loacker','ex','tirol','מפעל Loacker','Loacker Heinfels',46.7483,12.4489,'חובה להזמין מראש, הם נערכים לתרגום לעברית',1],
+['schaf','ex','hall','מלון עם תצפית Schafberg','Hotel Schafbergspitze',47.7763,13.4338,'על פסגת הר, תצפית על 4 אגמים. רכבת טיפוס של שעה וחצי',0],
+['kelten','ex','salz','מגלשת הרים קלטנבליץ','Keltenblitz',47.6595,13.0924,'',0],
+['hallein','ex','salz','מכרה מלח האלן','Salzwelten Hallein',47.6673,13.09,'חוויה לילדים',1],
+['hallsalt','ex','hall','מכרה מלח הלשטאט','Salzwelten Hallstatt',47.556,13.6453,'',1],
+['stoder','ex','hall','אומגה מומלצת','Zipline Stoderzinken',47.4474,13.8584,'',0],
+['grob','ex','hall','פארק חבלים גרבמינג','Abenteuerpark Gröbming',47.447,13.8584,'',0],
+['erleb','ex','near','פארק חבלים מהנה','Erlebniswald Altenmarkt',47.3565,13.4263,'',0],
+['paul','food','near','Paularei','Paularei',47.3547,13.393,'',1],
+['geist','food','near','Geisterberg Alpendorf','Geisterberg Alpendorf',47.3219,13.1951,'',0],
+['fritz','food','near','Fritztalstube Hüttau','Fritztalstube Hüttau',47.4153,13.308,'',1],
+['lindt','food','east','חנות ומפעל שוקולד Lindt','Lindt Gloggnitz',47.6769,15.9604,'',1],
+['werfen','park','salz','מבצר הוהנוורפן','Burg Hohenwerfen',47.4832,13.1889,'מבצר יפה, אפשר לשלב עם מופע הנשרים (הסבר בגרמנית)',0],
+['flori','park','near','מסלול Flori','Flori\'s Erlebnispfad',47.3425,13.3699,'מסלול רגלי מעגלי עם נוף וחיות, חינמי',0],
+['seisen','park','pinz','ערוץ Seisenbergklamm','Seisenbergklamm',47.5238,12.7564,'ערוץ נחל עמוק עם אשדים ושבילי עץ',0],
+['wild','park','east','פארק חיות בר מאוטרן','Der Wilde Berg Mautern',47.3933,14.8197,'פארק חיות בר כולל האכלה',0],
+['hallstatt','park','hall','הלשטאט','Hallstatt',47.5622,13.6493,'',0],
+['mirabell','park','salz','גני מירבל','Mirabell Palace',47.8054,13.0417,'הגנים היפים',0],
+['gesause','park','east','הפארק הלאומי גזויזה','Nationalpark Gesäuse',47.5652,14.5891,'פארק ירוק עם אגם',0],
+['fingers','park','hall','תצפית 5 Fingers','5 Fingers',47.5242,13.6922,'תצפית מרהיבה, לא לפספס',0],
+['treppe','park','hall','מדרגות לשום מקום','Treppe ins Nichts',47.4691,13.6251,'רכבל עם תצפית מרהיבה ונקודת צילום ייחודית',0],
+['thun','park','pinz','מפל Sigmund Thun','Sigmund Thun Klamm',47.256,12.7365,'מסלול מעגלי, אחד היפים. להביא מטריות, הרבה טיפות',0],
+['amade','park','near','מרחצאות Therme Amadé','Erlebnis-Therme Amadé',47.3816,13.4078,'בריכות חמות עם מגלשות. להביא מגבות וסבון, לבדוק הנחה באתר',1],
+['wagrain','park','near','עולם המים וגריין','Wasserwelt Wagrain',47.3318,13.3028,'',0],
+['aquadome','park','tirol','מרחצאות Aqua Dome','Aqua Dome',47.0697,10.9647,'אפשר לשלם על כניסה יומית למרחצאות',1],
+['area47','park','tirol','פארק מים AREA 47','AREA 47',47.2288,10.8444,'רפטינג, גלישת קניונים ופעילויות מים',0],
+['golling','park','salz','מפל גולינג','Gollinger Wasserfall',47.6012,13.1368,'מפל מדורג בגובה 75 מטר, שתי נקודות תצפית, בית קפה בכניסה',0],
+['bluntau','park','salz','אגם בלונטאו','Bluntausee',47.5776,13.1394,'מים שקופים, עצירה נחמדה בדרך לזלצבורג',0],
+['krimml','park','pinz','מפלי קרימל','Krimmler Wasserfälle',47.2141,12.1694,'מסלול יפה, לא לבוא בגשם',0],
+['panorama','park','hall','תצפית על הלשטאט','Hallstatt Skywalk',47.5613,13.6436,'אפשר להגיע ברגל או ברכבל',0],
+['hangar','park','salz','האנגר 7 של רד בול','Hangar-7',47.7935,13.0078,'מוזיאון עם מטוסים ורכבים',1]
+].map(r=>({id:r[0],cat:r[1],area:r[2],he:r[3],de:r[4],lat:r[5],lng:r[6],note:r[7],rain:!!r[8]}));
